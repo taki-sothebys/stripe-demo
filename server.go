@@ -15,7 +15,7 @@ func main() {
 	// This is a public sample test API key.
 	// Don’t submit any personally identifiable information in requests made with this key.
 	// Sign in to see your own test API key embedded in code samples.
-	stripe.Key = "sk_test_51LkZ5NCcMY6nBE2UpgllGJwLzd5FfLAK8RqeOvibFCH4WuvhTaiMRLg4cxGMyU9uukI4yCKjduH6SWhMb8Hn4w4o00OsGgDPyn"
+	stripe.Key = "<YOUR_PUBLIC_KEY_HERE>"
 
 	fs := http.FileServer(http.Dir("public"))
 	http.Handle("/", fs)
@@ -63,9 +63,11 @@ func handleSummarizePayment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, struct {
-		ClientSecret string `json:"clientSecret"`
+		ClientSecret string                `json:"clientSecret"`
+		Intent       *stripe.PaymentIntent `json:"intent"`
 	}{
 		ClientSecret: intent.ClientSecret,
+		Intent:       intent,
 	})
 }
 

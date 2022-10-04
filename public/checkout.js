@@ -1,7 +1,7 @@
 // This is a public sample test API key.
 // Don’t submit any personally identifiable information in requests made with this key.
 // Sign in to see your own test API key embedded in code samples.
-const stripe = Stripe("pk_test_51LkZ5NCcMY6nBE2UHxjhnQw625FvZmJAbCjQIEk7I4Vvd82fwJhulStVwcUfV5CKjceDVfYXeAmFxqTjqCB9d1Ap008jBQN4xD", {
+const stripe = Stripe("<YOUR_API_KEY_HERE>", {
   betas: ['server_side_confirmation_beta_1'],
   apiVersion: '2022-08-01;server_side_confirmation_beta=v1',
 });
@@ -9,33 +9,36 @@ const stripe = Stripe("pk_test_51LkZ5NCcMY6nBE2UHxjhnQw625FvZmJAbCjQIEk7I4Vvd82f
 const items = [{ id: "xl-tshirt" }];
 
 let elements;
+let clientSecret;
+let alreadySubmitted;
 
 initialize();
 checkStatus();
 
-
-
 document
   .querySelector("#payment-form").addEventListener('submit', function (event) {
   event.preventDefault();
+  setLoading(true);
 
-  stripe.confirmPayment({
-    clientSecret: '{PAYMENT_INTENT_CLIENT_SECRET}',
-    confirmParams: {
-      return_url: 'https://example.com/order/123/complete',
-    },
-  }).then(function (result) {
-    if (error) {
-      // This point will only be reached if there is an immediate error when
-      // confirming the payment. Show error to your customer.
-      var messageContainer = document.querySelector('#error-message');
-      messageContainer.textContent = error.message;
-    } else {
-      // Your customer will be redirected to your `return_url`. For some payment
-      // methods like iDEAL, your customer will be redirected to an intermediate
-      // site first to authorize the payment, then redirected to the `return_url`.
-    }
-  });
+  if (!alreadySubmitted) {
+    stripe.updatePaymentIntent({
+      elements, // elements instance
+    }).then(function (result) {
+      checkStatus();
+      alreadySubmitted = true
+      setLoading(false);
+    });
+  } else {
+    stripe.confirmPayment({
+      clientSecret: clientSecret,
+      confirmParams: {
+        return_url: 'http://localhost:4242/checkout.html?confirmed=true',
+      },
+    }).then(function (result) {
+      checkStatus();
+      setLoading(false);
+    });
+  }
 });
 
 // Fetches a payment intent and captures the client secret
@@ -45,7 +48,8 @@ async function initialize() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ items }),
   });
-  const { clientSecret } = await response.json();
+  const resp = await response.json();
+  clientSecret = resp.clientSecret
 
   const appearance = {
     theme: 'stripe',
@@ -58,10 +62,6 @@ async function initialize() {
 
 // Fetches the payment intent status after payment submission
 async function checkStatus() {
-  const clientSecret = new URLSearchParams(window.location.search).get(
-    "payment_intent_client_secret"
-  );
-
   if (!clientSecret) {
     return;
   }
@@ -70,7 +70,10 @@ async function checkStatus() {
 
   switch (paymentIntent.status) {
     case "succeeded":
-      fetchAndRenderSummary();
+      showMessage("Thanks for the money!");
+      break;
+    case "requires_confirmation":
+      fetchAndRenderSummary(paymentIntent.id);
       break;
     case "processing":
       showMessage("Your payment is processing.");
@@ -86,7 +89,7 @@ async function checkStatus() {
 
 // ------- UI helpers -------
 
-function showMessage(messageText) {
+function showMessage(messageText, timeout) {
   const messageContainer = document.querySelector("#payment-message");
 
   messageContainer.classList.remove("hidden");
@@ -94,17 +97,25 @@ function showMessage(messageText) {
 
   setTimeout(function () {
     messageContainer.classList.add("hidden");
-    messageText.textContent = "";
+    messageContainer.textContent = "";
   }, 4000);
 }
 
-function fetchAndRenderSummary () {
+function fetchAndRenderSummary (paymentIntentId) {
   fetch('/summarize-payment', {
-    body: JSON.stringify({ payment_intent_id: '{PAYMENT_INTENT_ID}' })
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ payment_intent_id: paymentIntentId })
   }).then(function (res) {
+    console.log(res)
     return res.json();
   }).then(function (summary) {
-    // Render the summary object returned by your server
+    console.log(summary)
+    document.querySelector("#button-text").innerHTML = "Confirm"
+    const messageContainer = document.querySelector("#payment-message");
+
+    messageContainer.classList.remove("hidden");
+    messageContainer.textContent = "Please confirm amount: " + summary.intent.amount;
   });
 };
 
