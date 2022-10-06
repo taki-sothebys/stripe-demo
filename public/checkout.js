@@ -1,7 +1,7 @@
 // This is a public sample test API key.
 // Don’t submit any personally identifiable information in requests made with this key.
 // Sign in to see your own test API key embedded in code samples.
-const stripe = Stripe("<YOUR_API_KEY_HERE>", {
+const stripe = Stripe("pk_test_51LkZ5NCcMY6nBE2UHxjhnQw625FvZmJAbCjQIEk7I4Vvd82fwJhulStVwcUfV5CKjceDVfYXeAmFxqTjqCB9d1Ap008jBQN4xD", {
   betas: ['server_side_confirmation_beta_1'],
   apiVersion: '2022-08-01;server_side_confirmation_beta=v1',
 });
@@ -10,7 +10,6 @@ const items = [{ id: "xl-tshirt" }];
 
 let elements;
 let clientSecret;
-let alreadySubmitted;
 
 initialize();
 checkStatus();
@@ -20,25 +19,28 @@ document
   event.preventDefault();
   setLoading(true);
 
-  if (!alreadySubmitted) {
-    stripe.updatePaymentIntent({
-      elements, // elements instance
-    }).then(function (result) {
-      checkStatus();
-      alreadySubmitted = true
-      setLoading(false);
-    });
-  } else {
-    stripe.confirmPayment({
-      clientSecret: clientSecret,
-      confirmParams: {
-        return_url: 'http://localhost:4242/checkout.html?confirmed=true',
-      },
-    }).then(function (result) {
-      checkStatus();
-      setLoading(false);
-    });
-  }
+  stripe.updatePaymentIntent({
+    elements, // elements instance
+  }).then(function (result) {
+    checkStatus();
+    setLoading(false);
+  });
+});
+
+document
+  .querySelector("#confirm-form").addEventListener('submit', function (event) {
+  event.preventDefault();
+  setLoading(true);
+
+  stripe.confirmPayment({
+    clientSecret: clientSecret,
+    confirmParams: {
+      return_url: 'http://localhost:4242/checkout.html?confirmed=true',
+    },
+  }).then(function (result) {
+    checkStatus();
+    setLoading(false);
+  });
 });
 
 // Fetches a payment intent and captures the client secret
@@ -111,11 +113,13 @@ function fetchAndRenderSummary (paymentIntentId) {
     return res.json();
   }).then(function (summary) {
     console.log(summary)
-    document.querySelector("#button-text").innerHTML = "Confirm"
+    document.querySelector("#payment-form").classList.add("hidden");
+    document.querySelector("#confirm-form").classList.remove("hidden");
+    document.querySelector("#details").textContent = "Please confirm amount: " + summary.intent.amount;
+
     const messageContainer = document.querySelector("#payment-message");
 
     messageContainer.classList.remove("hidden");
-    messageContainer.textContent = "Please confirm amount: " + summary.intent.amount;
   });
 };
 
@@ -124,10 +128,12 @@ function setLoading(isLoading) {
   if (isLoading) {
     // Disable the button and show a spinner
     document.querySelector("#submit").disabled = true;
+    document.querySelector("#confirm").disabled = true;
     document.querySelector("#spinner").classList.remove("hidden");
     document.querySelector("#button-text").classList.add("hidden");
   } else {
     document.querySelector("#submit").disabled = false;
+    document.querySelector("#confirm").disabled = false;
     document.querySelector("#spinner").classList.add("hidden");
     document.querySelector("#button-text").classList.remove("hidden");
   }

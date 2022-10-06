@@ -15,7 +15,7 @@ func main() {
 	// This is a public sample test API key.
 	// Don’t submit any personally identifiable information in requests made with this key.
 	// Sign in to see your own test API key embedded in code samples.
-	stripe.Key = "<YOUR_PUBLIC_KEY_HERE>"
+	stripe.Key = "<secret_key>"
 
 	fs := http.FileServer(http.Dir("public"))
 	http.Handle("/", fs)
